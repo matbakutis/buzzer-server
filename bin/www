@@ -27,17 +27,47 @@ var server = http.createServer(app);
  * Socket.io config
  */
 const io = socketIO(server)
+const usersArray = [];
 
 io.on('connection', socket => {
   console.log('New client connected')
 
-  socket.on('change color', (color) => {
-    console.log('Color Changed to: ', color)
-    io.sockets.emit('change color', color)
+  socket.on('userConnected', (user) => {
+    console.log('userConnected', user.name, user.color)
+    usersArray.push({name: user.name, color: user.color, id: socket.id})
+    io.emit('updateUsers', usersArray)
   })
 
-  socket.on('disconnect', () => {
+  socket.on('adminConnected', () => {
+    console.log('admin connected')
+    io.emit('updateUsers', usersArray)
+  })
+
+  socket.on('adminClear', () => {
+    console.log('admin cleared users to black')
+    for (let i = 0; i < usersArray.length; i++) {
+      usersArray[i].color = 'black';
+    };
+    io.emit('updateUsers', usersArray)
+  })
+
+  socket.on('userUpdate', (updatedUser) => {
+    const foundUser = usersArray.find((user)=>{
+      return user.id === updatedUser.id
+    })
+    usersArray[usersArray.indexOf(foundUser)] = updatedUser;
+    console.log(usersArray)
+    io.emit('updateUsers', usersArray)
+  })
+
+  socket.on('disconnect', (disconnectedUser) => {
+    console.log(disconnectedUser);
     console.log('user disconnected')
+    const foundUser = usersArray.find((user)=>{
+      return user.id === disconnectedUser.id
+    })
+    usersArray.splice(usersArray.indexOf(foundUser),1);
+    io.emit('updateUsers', usersArray)
   })
 })
 
